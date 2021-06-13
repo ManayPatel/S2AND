@@ -7,6 +7,7 @@ from s2and.featurizer import featurize
 from s2and.eval import pairwise_eval
 from s2and.model import Clusterer, FastCluster
 from hyperopt import hp
+from s2and.eval import cluster_eval
 
 dataset_name = "pubmed"
 parent_dir = "data/data/pubmed/"
@@ -41,7 +42,7 @@ pairwise_model = PairwiseModeler(
 pairwise_model.fit(X_train, y_train, X_val, y_val)
 
 # this will also dump a lot of useful plots (ROC, PR, SHAP) to the figs_path
-pairwise_metrics = pairwise_eval(X_test, y_test, pairwise_model.classifier, figs_path='figs/', title='example')
+pairwise_metrics = pairwise_eval(X_test, y_test, pairwise_model.classifier, figs_path='figs/', title='example', shap_feature_names = ['x_test', 'y_test'], skip_shap = True)
 print(pairwise_metrics)
 
 clusterer = Clusterer(
