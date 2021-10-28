@@ -8,9 +8,10 @@ from s2and.eval import pairwise_eval
 from s2and.model import Clusterer, FastCluster
 from hyperopt import hp
 from s2and.eval import cluster_eval
+import pickle
 
-dataset_name = "pubmed"
-parent_dir = "data/data/pubmed/"
+dataset_name = "patent"
+parent_dir = "data/data/patent/"
 dataset = ANDData(
     signatures=join(parent_dir, f"{dataset_name}_signatures.json"),
     papers=join(parent_dir, f"{dataset_name}_papers.json"),
@@ -18,6 +19,9 @@ dataset = ANDData(
     specter_embeddings=join(parent_dir, f"{dataset_name}_specter.pickle"),
     clusters=join(parent_dir, f"{dataset_name}_clusters.json"),
     block_type="s2",
+    train_ratio=0.85,
+    val_ratio=0.1,
+    test_ratio=0.05,
     train_pairs_size=100000,
     val_pairs_size=10000,
     test_pairs_size=10000,
@@ -56,5 +60,26 @@ clusterer = Clusterer(
 clusterer.fit(dataset)
 
 # the metrics_per_signature are there so we can break out the facets if needed
-metrics, metrics_per_signature = cluster_eval(dataset, clusterer)
+dataset_name = "patent"
+parent_dir = "data/data/patent/"
+test_dataset = ANDData(
+    signatures=join(parent_dir, f"testing_signatures.json"),
+    papers=join(parent_dir, f"{dataset_name}_papers.json"),
+    mode="inference",
+#    specter_embeddings=join(parent_dir, f"{dataset_name}_specter.pickle"),
+    clusters=join(parent_dir, f"testing_clusters.json"),
+    block_type="s2",
+    train_ratio=0.0,
+    val_ratio=0.0,
+    test_ratio=1.0,
+    train_pairs_size=100000,
+    val_pairs_size=10000,
+    test_pairs_size=10000,
+    name=dataset_name,
+    n_jobs=24,
+)
+metrics, metrics_per_signature = cluster_eval(test_dataset, clusterer)
 print(metrics)
+
+with open("saved_model.pkl", "wb") as _pkl_file:
+	pickle.dump(clusterer, _pkl_file)
