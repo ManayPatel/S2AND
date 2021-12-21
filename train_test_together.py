@@ -10,39 +10,15 @@ from hyperopt import hp
 from s2and.eval import cluster_eval
 import pickle
 
-#Training Data
 dataset_name = "patent"
 parent_dir = "data/data/patent/mixture/"
 dataset = ANDData(
     signatures=join(parent_dir, f"{dataset_name}_signatures.json"),
     papers=join("data/data/patent/", f"{dataset_name}_papers.json"),
-    mode="only_train_val_split",
+    mode="train",
     specter_embeddings=join(parent_dir, f"{dataset_name}_specter.pickle"),
     clusters=join(parent_dir, f"{dataset_name}_clusters.json"),
     block_type="s2",
-    train_ratio=0.8,
-    val_ratio=0.2,
-    test_ratio=0,
-    train_pairs_size=100000,
-    val_pairs_size=10000,
-    test_pairs_size=10000,
-    name=dataset_name,
-    n_jobs=24,
-)
-
-#Test Data
-dataset_name = "patent"
-parent_dir = "data/data/patent/ens/"
-test_dataset = ANDData(
-    signatures=join(parent_dir, f"{dataset_name}_signatures.json"),
-    papers=join("data/data/patent/", f"{dataset_name}_papers.json"),
-    mode="only_test",
-#    specter_embeddings=join(parent_dir, f"{dataset_name}_specter.pickle"),
-    clusters=join(parent_dir, f"{dataset_name}_clusters.json"),
-    block_type="s2",
-    train_ratio=0.0,
-    val_ratio=0.0,
-    test_ratio=1.0,
     train_pairs_size=100000,
     val_pairs_size=10000,
     test_pairs_size=10000,
@@ -52,13 +28,11 @@ test_dataset = ANDData(
 
 featurization_info = FeaturizationInfo()
 # the cache will make it faster to train multiple times - it stores the features on disk for you
-train, val, test_dummy = featurize(dataset, featurization_info, n_jobs=24, use_cache=True)
+train, val, test = featurize(dataset, featurization_info, n_jobs=8, use_cache=True)
 X_train, y_train, _ = train
 X_val, y_val, _ = val
-
-
-_, _, test = featurize(test_dataset, featurization_info, n_jobs=24, use_cache=True)
 X_test, y_test, _ = test
+
 # calibration fits isotonic regression after the binary classifier is fit
 # monotone constraints help the LightGBM classifier behave sensibly
 pairwise_model = PairwiseModeler(
@@ -82,11 +56,8 @@ clusterer = Clusterer(
 clusterer.fit(dataset)
 
 # the metrics_per_signature are there so we can break out the facets if needed
-metrics, metrics_per_signature = cluster_eval(test_dataset, clusterer)
+metrics, metrics_per_signature = cluster_eval(dataset, clusterer)
 print(metrics)
 
-with open("pairwise.pkl", "wb") as _pkl_file:
-    pickle.dump(pairwise_model, _pkl_file)
-
-with open("clusterer.pkl", "wb") as _pkl_file:
+with open("test.pkl", "wb") as _pkl_file:
 	pickle.dump(clusterer, _pkl_file)

@@ -334,7 +334,7 @@ class ANDData:
         if self.clusters is None:
             self.signature_to_cluster_id = None
 
-        if self.mode == "train":
+        if self.mode == "train" or self.mode == "only_train_val_split" or self.mode == "only_test":
             if self.clusters is not None:
                 self.signature_to_cluster_id = {}
                 logger.info("making signature to cluster id")
@@ -810,31 +810,40 @@ class ANDData:
         -------
         train/val/test block dictionaries
         """
-        x = []
-        y = []
-        for block_id, signature in blocks_dict.items():
-            x.append(block_id)
-            y.append(len(signature))
+        if self.mode == 'only_test':
+            train_blocks = {}
+            val_blocks = {}
+            test_blocks = blocks_dict
+        
+        else:
+            x = []
+            y = []
+            for block_id, signature in blocks_dict.items():
+                x.append(block_id)
+                y.append(len(signature))
 
-        clustering_model = KMeans(
-            n_clusters=self.num_clusters_for_block_size,
-            random_state=self.random_seed,
-        ).fit(np.array(y).reshape(-1, 1))
-        y_group = clustering_model.labels_
-
-        train_blocks, val_test_blocks, _, val_test_length = train_test_split(
-            x,
-            y_group,
-            test_size=self.val_ratio + self.test_ratio,
-            stratify=y_group,
-            random_state=self.random_seed,
-        )
-        val_blocks, test_blocks = train_test_split(
-            val_test_blocks,
-            test_size=self.test_ratio / (self.val_ratio + self.test_ratio),
-            stratify=val_test_length,
-            random_state=self.random_seed,
-        )
+            clustering_model = KMeans(
+                n_clusters=self.num_clusters_for_block_size,
+                random_state=self.random_seed,
+            ).fit(np.array(y).reshape(-1, 1))
+            y_group = clustering_model.labels_
+            train_blocks, val_test_blocks, _, val_test_length = train_test_split(
+                x,
+                y_group,
+                test_size=self.val_ratio + self.test_ratio,
+                stratify=y_group,
+                random_state=self.random_seed,
+            )
+            if self.mode == 'only_train_val_split':
+                val_blocks = val_test_blocks
+                test_blocks = {}
+            elif self.mode == 'train':
+                val_blocks, test_blocks = train_test_split(
+                    val_test_blocks,
+                    test_size=self.test_ratio / (self.val_ratio + self.test_ratio),
+                    stratify=val_test_length,
+                    random_state=self.random_seed,
+                )
 
         train_block_dict = {k: blocks_dict[k] for k in train_blocks}
         val_block_dict = {k: blocks_dict[k] for k in val_blocks}
